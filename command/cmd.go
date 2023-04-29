@@ -1,7 +1,6 @@
 package command
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"regexp"
@@ -22,17 +21,21 @@ func Run() {
 		if !file.IsDir() {
 			fname := file.Name()
 			if re.MatchString(fname) {
-				fmt.Println(fname)
-				decodeExif(fname)
+				time, err := decodeExif(fname)
+				if err != nil {
+					Error(fname, err)
+				} else {
+					Success(fname, time)
+				}
 			}
 		}
 	}
 }
 
-func decodeExif(fname string) {
+func decodeExif(fname string) (string, error) {
 	f, err := os.Open(fname)
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 
 	exif.RegisterParsers(mknote.All...)
@@ -40,13 +43,13 @@ func decodeExif(fname string) {
 	x, err := exif.Decode(f)
 	f.Close()
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 
 	tm, err := x.DateTime()
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 
-	fmt.Println("Taken: ", tm)
+	return tm.Format("2006-01-02 15.04.05"), nil
 }
