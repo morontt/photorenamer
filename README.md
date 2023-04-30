@@ -1,1 +1,7 @@
-Rename photos by date from EXIF
+Rename photos and videos by date from EXIF and other metadata
+
+Requires [MediaInfo](https://mediaarea.net/en/MediaInfo) to work with video:
+
+```sh
+sudo snap install mediainfo
+```

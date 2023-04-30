@@ -6,10 +6,8 @@ import (
 	"io"
 	"log"
 	"os"
-	"regexp"
 
-	"github.com/rwcarlsen/goexif/exif"
-	"github.com/rwcarlsen/goexif/mknote"
+	"xelbot.com/renamer/types"
 )
 
 var files map[string]bool
@@ -19,8 +17,6 @@ func init() {
 }
 
 func Run() {
-	re := regexp.MustCompile(`(?i).jpe?g$`)
-
 	dirEntries, err := os.ReadDir(".")
 	if err != nil {
 		log.Fatal(err)
@@ -29,50 +25,36 @@ func Run() {
 	for _, file := range dirEntries {
 		if !file.IsDir() {
 			fname := file.Name()
-			if re.MatchString(fname) {
+			if types.Support(fname) {
 				files[fname] = true
 			}
 		}
 	}
 
 	for fname, value := range files {
-		time, err := decodeExif(fname)
-		if err != nil {
-			Error(fname, err)
-		} else {
-			if value {
-				move(fname, time)
+		if value {
+			media, err := types.GetMediaFile(fname)
+			if err != nil {
+				Error(fname, err)
+			} else {
+				err := media.ParseTime()
+				if err != nil {
+					Error(fname, err)
+				} else {
+					move(media)
+				}
 			}
 		}
 	}
 }
 
-func decodeExif(fname string) (string, error) {
-	f, err := os.Open(fname)
-	if err != nil {
-		return "", err
-	}
-
-	exif.RegisterParsers(mknote.All...)
-
-	x, err := exif.Decode(f)
-	f.Close()
-	if err != nil {
-		return "", err
-	}
-
-	tm, err := x.DateTime()
-	if err != nil {
-		return "", err
-	}
-
-	return tm.Format("2006-01-02 15.04.05"), nil
-}
-
-func move(oldFilename, time string) {
+func move(media types.MediaFile) {
 	var i int = 1
 
-	newFilename := time + ".jpg"
+	oldFilename := media.OriginalFilename()
+	time := media.DateTime()
+
+	newFilename := time + "." + media.Extension()
 	if newFilename != oldFilename {
 		_, ok := files[newFilename]
 		for ok {
@@ -86,7 +68,7 @@ func move(oldFilename, time string) {
 				return
 			}
 
-			newFilename = fmt.Sprintf("%s(%d).jpg", time, i)
+			newFilename = fmt.Sprintf("%s(%d).%s", time, i, media.Extension())
 			i++
 			_, ok = files[newFilename]
 			if !ok {
