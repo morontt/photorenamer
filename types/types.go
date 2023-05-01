@@ -26,6 +26,17 @@ func (m *baseMediaPart) DateTime() string {
 	return m.dateTime.Format("2006-01-02 15.04.05")
 }
 
+func (m *baseMediaPart) setTimeByString(timeString string) error {
+	t, err := parseTimeString(timeString)
+	if err != nil {
+		return err
+	}
+
+	m.dateTime = t.In(time.Local)
+
+	return nil
+}
+
 var (
 	regexpTimeformatA *regexp.Regexp
 	regexpTimeformatB *regexp.Regexp
@@ -46,7 +57,7 @@ func parseTimeString(timeString string) (time.Time, error) {
 	} else if regexpTimeformatB.MatchString(timeString) {
 		timeLayout = "2006-01-02 15:04:05 MST"
 	} else {
-		return time.Time{}, errors.New("mp4: unknown DateTime format")
+		return time.Time{}, errors.New("types.go: unknown DateTime format")
 	}
 
 	return time.Parse(timeLayout, timeString)

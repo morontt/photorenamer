@@ -4,7 +4,6 @@ import (
 	"errors"
 	"os/exec"
 	"regexp"
-	"time"
 )
 
 var regexpMediainfoOutput *regexp.Regexp
@@ -42,12 +41,10 @@ func (mpeg *Mpeg4File) ParseTime() error {
 		return errors.New("mp4: DateTime is not present")
 	}
 
-	t, err := parseTimeString(timeString)
+	err = mpeg.setTimeByString(timeString)
 	if err != nil {
 		return err
 	}
-
-	mpeg.dateTime = t.In(time.Local)
 
 	return nil
 }

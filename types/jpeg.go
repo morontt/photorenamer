@@ -17,12 +17,12 @@ func (jpg *JpegFile) Extension() string {
 }
 
 func (jpg *JpegFile) ParseTime() error {
-	time, err := decodeExif(jpg.filename)
+	dt, err := decodeExif(jpg.filename)
 	if err != nil {
 		return err
 	}
 
-	jpg.dateTime = time
+	jpg.dateTime = dt
 
 	return nil
 }
