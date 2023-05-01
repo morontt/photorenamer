@@ -2,6 +2,7 @@ package types
 
 import (
 	"os"
+	"time"
 
 	"github.com/rwcarlsen/goexif/exif"
 	"github.com/rwcarlsen/goexif/mknote"
@@ -26,10 +27,10 @@ func (jpg *JpegFile) ParseTime() error {
 	return nil
 }
 
-func decodeExif(fname string) (string, error) {
+func decodeExif(fname string) (time.Time, error) {
 	f, err := os.Open(fname)
 	if err != nil {
-		return "", err
+		return time.Time{}, err
 	}
 
 	exif.RegisterParsers(mknote.All...)
@@ -37,13 +38,8 @@ func decodeExif(fname string) (string, error) {
 	x, err := exif.Decode(f)
 	f.Close()
 	if err != nil {
-		return "", err
+		return time.Time{}, err
 	}
 
-	tm, err := x.DateTime()
-	if err != nil {
-		return "", err
-	}
-
-	return tm.Format("2006-01-02 15.04.05"), nil
+	return x.DateTime()
 }
