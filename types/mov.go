@@ -23,8 +23,9 @@ type jsonTrack struct {
 }
 
 type jsonTrackItem struct {
-	TypeItem string `json:"@type"`
-	Extra    map[string]string
+	TypeItem    string `json:"@type"`
+	EncodedDate string `json:"Encoded_Date"`
+	Extra       map[string]string
 }
 
 func (mov *QuickTimeFile) ParseTime() error {
@@ -45,9 +46,13 @@ func (mov *QuickTimeFile) ParseTime() error {
 		if item.TypeItem == "General" {
 			timeString, ok = item.Extra["com_apple_quicktime_creationdate"]
 			if !ok {
-				return errors.New("mov.go: DateTime is not present")
+				timeString = item.EncodedDate
 			}
 		}
+	}
+
+	if len(timeString) == 0 {
+		return errors.New("mov.go: DateTime is not present")
 	}
 
 	err = mov.setTimeByString(timeString)
