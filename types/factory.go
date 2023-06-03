@@ -6,16 +6,10 @@ import (
 )
 
 var (
-	regexpJpg       *regexp.Regexp
-	regexpMpeg4     *regexp.Regexp
-	regexpQuickTime *regexp.Regexp
-)
-
-func init() {
-	regexpJpg = regexp.MustCompile(`(?i)\.jpe?g$`)
-	regexpMpeg4 = regexp.MustCompile(`(?i)\.mp4$`)
+	regexpJpg       = regexp.MustCompile(`(?i)\.jpe?g$`)
+	regexpMpeg4     = regexp.MustCompile(`(?i)\.mp4$`)
 	regexpQuickTime = regexp.MustCompile(`(?i)\.mov$`)
-}
+)
 
 func Support(filename string) bool {
 	return regexpJpg.MatchString(filename) ||

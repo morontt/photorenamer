@@ -6,7 +6,7 @@ import (
 	"regexp"
 )
 
-var regexpMediainfoOutput *regexp.Regexp
+var regexpMediainfoOutput = regexp.MustCompile(`^RT=(.*)\s+ET=(.*)\n$`)
 
 type Mpeg4File struct {
 	baseMediaPart
@@ -14,10 +14,6 @@ type Mpeg4File struct {
 
 func (mpeg *Mpeg4File) Extension() string {
 	return "mp4"
-}
-
-func init() {
-	regexpMediainfoOutput = regexp.MustCompile(`^RT=(.*)\s+ET=(.*)\n$`)
 }
 
 func (mpeg *Mpeg4File) ParseTime() error {
