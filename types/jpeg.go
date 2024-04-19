@@ -1,11 +1,13 @@
 package types
 
 import (
+	"errors"
+	"fmt"
+	"io"
 	"os"
 	"time"
 
-	"github.com/rwcarlsen/goexif/exif"
-	"github.com/rwcarlsen/goexif/mknote"
+	goexif "github.com/dsoprea/go-exif/v3"
 )
 
 type JpegFile struct {
@@ -33,13 +35,43 @@ func decodeExif(fname string) (time.Time, error) {
 		return time.Time{}, err
 	}
 
-	exif.RegisterParsers(mknote.All...)
-
-	x, err := exif.Decode(f)
-	f.Close()
+	fileData, err := io.ReadAll(f)
 	if err != nil {
 		return time.Time{}, err
 	}
 
-	return x.DateTime()
+	rawExif, err := goexif.SearchAndExtractExifN(fileData, 0)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	entries, _, err := goexif.GetFlatExifData(rawExif, nil)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return searchDateTime(entries)
+}
+
+func searchDateTime(exifTags []goexif.ExifTag) (time.Time, error) {
+	var dt time.Time
+	tag, err := findTag("DateTimeOriginal", exifTags)
+	if err != nil {
+		tag, err = findTag("DateTime", exifTags)
+		if err != nil {
+			return dt, err
+		}
+	}
+
+	return time.Parse("2006:01:02 15:04:05", tag.Formatted)
+}
+
+func findTag(tagName string, exifTags []goexif.ExifTag) (goexif.ExifTag, error) {
+	for _, tag := range exifTags {
+		if tag.TagName == tagName {
+			return tag, nil
+		}
+	}
+
+	return goexif.ExifTag{}, errors.New(fmt.Sprintf("exif: tag %s is not present", tagName))
 }
