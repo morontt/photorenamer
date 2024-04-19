@@ -2,6 +2,7 @@ package types
 
 import (
 	"errors"
+	"os/exec"
 	"regexp"
 	"time"
 )
@@ -17,6 +18,8 @@ type baseMediaPart struct {
 	filename string
 	dateTime time.Time
 }
+
+type mediaInfoPart struct{}
 
 func (m *baseMediaPart) OriginalFilename() string {
 	return m.filename
@@ -38,6 +41,8 @@ func (m *baseMediaPart) setTimeByString(timeString string) error {
 }
 
 var (
+	regexpMediainfoOutput = regexp.MustCompile(`^RT=(.*)\s+ET=(.*)\n$`)
+
 	// 2006-01-02T15:04:05-0700
 	regexpTimeformatA = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[\+-]\d{4}$`)
 	// 2023-05-01 06:08:47 UTC
@@ -56,4 +61,28 @@ func parseTimeString(timeString string) (time.Time, error) {
 	}
 
 	return time.Parse(timeLayout, timeString)
+}
+
+func (m *mediaInfoPart) extractTimeString(filename, extension string) (string, error) {
+	var timeString string
+
+	out, err := exec.Command("mediainfo", "--Output=General;RT=%Recorded_Date% ET=%Encoded_Date%", filename).Output()
+	if err != nil {
+		return "", err
+	}
+
+	s := regexpMediainfoOutput.FindStringSubmatch(string(out))
+	if len(s) < 3 {
+		return "", errors.New(extension + ": wrong mediainfo output format")
+	}
+
+	if len(s[1]) > 0 {
+		timeString = s[1]
+	} else if len(s[2]) > 0 {
+		timeString = s[2]
+	} else {
+		return "", errors.New(extension + ": DateTime is not present")
+	}
+
+	return timeString, nil
 }
