@@ -6,11 +6,15 @@ import (
 	"io"
 	"log"
 	"os"
+	"regexp"
 
 	"xelbot.com/renamer/types"
 )
 
-var files map[string]bool
+var (
+	files      map[string]bool
+	regexpSkip = regexp.MustCompile(`^\d{4}-\d{2}-\d{2} \d{2}\.\d{2}\.\d{2}\.`)
+)
 
 func init() {
 	files = make(map[string]bool)
@@ -25,7 +29,7 @@ func Run() {
 	for _, file := range dirEntries {
 		if !file.IsDir() {
 			fname := file.Name()
-			if types.Support(fname) {
+			if types.Support(fname) && !skip(fname) {
 				files[fname] = true
 			}
 		}
@@ -46,6 +50,15 @@ func Run() {
 			}
 		}
 	}
+}
+
+func skip(filename string) (result bool) {
+	if regexpSkip.MatchString(filename) {
+		result = true
+		Skipped(filename)
+	}
+
+	return
 }
 
 func move(media types.MediaFile) {

@@ -20,3 +20,7 @@ func Success(oldFilename, newFilename string) {
 func Duplicate(oldFilename, newFilename string) {
 	fmt.Printf("%s%s%s is a duplicate of file %s\n", Magenta, oldFilename, Reset, newFilename)
 }
+
+func Skipped(filename string) {
+	fmt.Printf("%s%s%s skipped\n", Blue, filename, Reset)
+}
