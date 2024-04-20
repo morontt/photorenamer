@@ -29,7 +29,7 @@ func Run() {
 	for _, file := range dirEntries {
 		if !file.IsDir() {
 			fname := file.Name()
-			if types.Support(fname) && !skip(fname) {
+			if types.Support(fname) {
 				files[fname] = true
 			}
 		}
@@ -37,6 +37,9 @@ func Run() {
 
 	for fname, value := range files {
 		if value {
+			if skip(fname) {
+				continue
+			}
 			media, err := types.GetMediaFile(fname)
 			if err != nil {
 				Error(fname, err)
