@@ -2,7 +2,6 @@ package types
 
 type Mpeg4File struct {
 	baseMediaPart
-	mediaInfoPart
 }
 
 func (mpeg *Mpeg4File) Extension() string {
@@ -10,7 +9,12 @@ func (mpeg *Mpeg4File) Extension() string {
 }
 
 func (mpeg *Mpeg4File) ParseTime() error {
-	timeString, err := mpeg.extractTimeString(mpeg.filename, mpeg.Extension())
+	track, err := extractGeneralTrack(mpeg.filename)
+	if err != nil {
+		return err
+	}
+
+	timeString, err := track.getTimeString()
 	if err != nil {
 		return err
 	}

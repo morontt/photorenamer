@@ -1,9 +1,7 @@
 package types
 
 import (
-	"encoding/json"
 	"errors"
-	"os/exec"
 )
 
 type QuickTimeFile struct {
@@ -14,40 +12,19 @@ func (mov *QuickTimeFile) Extension() string {
 	return "mov"
 }
 
-type jsonData struct {
-	Media jsonTrack
-}
-
-type jsonTrack struct {
-	Tracks []jsonTrackItem `json:"track"`
-}
-
-type jsonTrackItem struct {
-	TypeItem    string `json:"@type"`
-	EncodedDate string `json:"Encoded_Date"`
-	Extra       map[string]string
-}
-
 func (mov *QuickTimeFile) ParseTime() error {
-	out, err := exec.Command("mediainfo", "--Output=JSON", mov.filename).Output()
-	if err != nil {
-		return err
-	}
-
-	var parts jsonData
-	err = json.Unmarshal(out, &parts)
+	track, err := extractGeneralTrack(mov.filename)
 	if err != nil {
 		return err
 	}
 
 	var timeString string
 	var ok bool
-	for _, item := range parts.Media.Tracks {
-		if item.TypeItem == "General" {
-			timeString, ok = item.Extra["com_apple_quicktime_creationdate"]
-			if !ok {
-				timeString = item.EncodedDate
-			}
+	timeString, ok = track.Extra["com_apple_quicktime_creationdate"]
+	if !ok {
+		timeString, err = track.getTimeString()
+		if err != nil {
+			return err
 		}
 	}
 
