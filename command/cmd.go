@@ -1,23 +1,25 @@
 package command
 
 import (
-	"crypto/sha1"
+	"errors"
 	"fmt"
-	"io"
+	"io/fs"
 	"log"
 	"os"
 	"regexp"
+	"sort"
+	"strings"
 
 	"xelbot.com/renamer/types"
 )
 
 var (
-	files      map[string]bool
-	regexpSkip = regexp.MustCompile(`^\d{4}-\d{2}-\d{2} \d{2}\.\d{2}\.\d{2}\.`)
+	existingFiles map[string]bool
+	regexpSkip    = regexp.MustCompile(`^\d{4}-\d{2}-\d{2} \d{2}\.\d{2}\.\d{2}(-\d+)?\.`)
 )
 
 func init() {
-	files = make(map[string]bool)
+	existingFiles = make(map[string]bool)
 }
 
 func Run() {
@@ -26,93 +28,99 @@ func Run() {
 		log.Fatal(err)
 	}
 
+	mediaFiles := make(types.MediaFiles, 0)
 	for _, file := range dirEntries {
 		if !file.IsDir() {
 			fname := file.Name()
 			if types.Support(fname) {
-				files[fname] = true
+				existingFiles[fname] = true
+				media, err := types.GetMediaFile(fname)
+				if err != nil {
+					Error(fname, err)
+				} else {
+					if !skip(fname) {
+						err = media.ParseTime()
+						if err != nil {
+							Error(fname, err)
+						}
+					}
+					mediaFiles = append(mediaFiles, media)
+				}
 			}
 		}
 	}
 
-	for fname, value := range files {
-		if value {
-			if skip(fname) {
-				continue
-			}
-			media, err := types.GetMediaFile(fname)
-			if err != nil {
-				Error(fname, err)
-			} else {
-				err := media.ParseTime()
-				if err != nil {
-					Error(fname, err)
-				} else {
-					move(media)
+	var newFilename string
+
+	sort.Sort(mediaFiles)
+	for idx, media := range mediaFiles {
+		if idx > 0 {
+			if mediaFiles[idx-1].TimeBasedFilename() == media.TimeBasedFilename() {
+				if mediaFiles[idx-1].Hash() == media.Hash() {
+					Duplicate(media.OriginalFilename(), mediaFiles[idx-1].OriginalFilename())
+					err = os.Remove(media.OriginalFilename())
+					if err != nil {
+						log.Fatal(err)
+					}
+					delete(existingFiles, media.OriginalFilename())
+
+					continue
 				}
 			}
+		}
+
+		if media.OriginalFilename() != media.TimeBasedFilename() {
+			newFilename, err = move(media)
+			if err != nil {
+				Error(media.OriginalFilename(), err)
+			} else {
+				Success(media.OriginalFilename(), newFilename)
+			}
+		} else {
+			Skipped(media.OriginalFilename())
 		}
 	}
 }
 
 func skip(filename string) (result bool) {
-	if regexpSkip.MatchString(filename) {
-		result = true
-		Skipped(filename)
-	}
-
-	return
+	return regexpSkip.MatchString(filename)
 }
 
-func move(media types.MediaFile) {
-	var i int = 1
+func move(media types.MediaFile) (string, error) {
+	var i int
+	var newFilename string
 
-	oldFilename := media.OriginalFilename()
-	time := media.DateTime()
+	last := strings.LastIndex(media.TimeBasedFilename(), ".")
+	baseName := media.TimeBasedFilename()[:last]
+	ext := media.Extension()
 
-	newFilename := time + "." + media.Extension()
-	if newFilename != oldFilename {
-		_, ok := files[newFilename]
-		for ok {
-			if hash(oldFilename) == hash(newFilename) {
-				Duplicate(oldFilename, newFilename)
-				err := os.Remove(oldFilename)
-				if err != nil {
-					log.Fatal(err)
-				}
-
-				return
-			}
-
-			newFilename = fmt.Sprintf("%s(%d).%s", time, i, media.Extension())
-			i++
-			_, ok = files[newFilename]
-			if !ok {
-				files[newFilename] = false
-			}
-		}
-
-		err := os.Rename(oldFilename, newFilename)
-		if err != nil {
-			Error(oldFilename, err)
+	i = -1
+	for {
+		i++
+		if i == 0 {
+			newFilename = baseName + "." + ext
 		} else {
-			Success(oldFilename, newFilename)
+			newFilename = fmt.Sprintf("%s-%d.%s", baseName, i, ext)
+		}
+
+		if _, ok := existingFiles[newFilename]; ok {
+			continue
+		}
+
+		_, err := os.Stat(newFilename)
+		if errors.Is(err, fs.ErrNotExist) {
+			err = os.Rename(media.OriginalFilename(), newFilename)
+			if err != nil {
+				return "", err
+			}
+
+			existingFiles[newFilename] = true
+
+			break
+		} else if err != nil {
+			return "", err
 		}
 	}
-}
 
-func hash(filename string) string {
-	f, err := os.Open(filename)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer f.Close()
-
-	h := sha1.New()
-	if _, err := io.Copy(h, f); err != nil {
-		log.Fatal(err)
-	}
-
-	return fmt.Sprintf("%x", h.Sum(nil))
+	return newFilename, nil
 }

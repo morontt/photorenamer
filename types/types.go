@@ -3,16 +3,20 @@ package types
 import (
 	"errors"
 	"regexp"
+	"strings"
 	"time"
 )
 
 type MediaFile interface {
 	Extension() string
 	OriginalFilename() string
+	TimeBasedFilename() string
 	ParseTime() error
 	DateTime() string
 	Hash() string
 }
+
+type MediaFiles []MediaFile
 
 var (
 	// 2006-01-02T15:04:05-0700
@@ -33,4 +37,26 @@ func parseTimeString(timeString string) (time.Time, error) {
 	}
 
 	return time.Parse(timeLayout, timeString)
+}
+
+func (mf MediaFiles) Len() int {
+	return len(mf)
+}
+
+func (mf MediaFiles) Swap(i, j int) {
+	mf[i], mf[j] = mf[j], mf[i]
+}
+
+func (mf MediaFiles) Less(i, j int) bool {
+	a, b := mf[i], mf[j]
+
+	cmp := strings.Compare(
+		strings.ToLower(a.TimeBasedFilename()),
+		strings.ToLower(b.TimeBasedFilename()),
+	)
+	if cmp == 0 {
+		cmp = strings.Compare(a.Hash(), b.Hash())
+	}
+
+	return cmp < 0
 }

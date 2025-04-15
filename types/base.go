@@ -6,6 +6,8 @@ import (
 	"io"
 	"log"
 	"os"
+	"path"
+	"strings"
 	"time"
 )
 
@@ -21,6 +23,14 @@ func (m *baseMediaPart) OriginalFilename() string {
 
 func (m *baseMediaPart) DateTime() string {
 	return m.dateTime.Format("2006-01-02 15.04.05")
+}
+
+func (m *baseMediaPart) TimeBasedFilename() string {
+	if m.dateTime.IsZero() {
+		return m.filename
+	}
+
+	return m.dateTime.Format("2006-01-02 15.04.05") + strings.ToLower(path.Ext(m.filename))
 }
 
 func (m *baseMediaPart) setTimeByString(timeString string) error {
