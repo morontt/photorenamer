@@ -23,6 +23,8 @@ var (
 	regexpTimeformatA = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[\+-]\d{4}$`)
 	// 2023-05-01 06:08:47 UTC
 	regexpTimeformatB = regexp.MustCompile(`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \w{3,4}$`)
+	// 2025-07-17 20:33:27+03:00
+	regexpTimeformatC = regexp.MustCompile(`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}[\+-]\d{2}:\d{2}$`)
 )
 
 func parseTimeString(timeString string) (time.Time, error) {
@@ -32,6 +34,8 @@ func parseTimeString(timeString string) (time.Time, error) {
 		timeLayout = "2006-01-02T15:04:05-0700"
 	} else if regexpTimeformatB.MatchString(timeString) {
 		timeLayout = "2006-01-02 15:04:05 MST"
+	} else if regexpTimeformatC.MatchString(timeString) {
+		timeLayout = "2006-01-02 15:04:05-07:00"
 	} else {
 		return time.Time{}, errors.New("types.go: unknown DateTime format")
 	}
